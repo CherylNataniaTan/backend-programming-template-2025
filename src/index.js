@@ -1,8 +1,8 @@
 const { env, port } = require('./core/config');
 const logger = require('./core/logger')('app');
-const server = require('./core/server');
+const app = require('./core/server');
 
-const app = server.listen(port, (err) => {
+const server = app.listen(port, (err) => {
   if (err) {
     logger.fatal(err, 'Failed to start the server.');
     process.exit(1);
@@ -13,12 +13,13 @@ const app = server.listen(port, (err) => {
 
 process.on('uncaughtException', (err) => {
   logger.fatal(err, 'Uncaught exception.');
+  // Tutup server dulu, baru exit di dalam callback-nya
+  server.close(() => {
+    process.exit(1);
+  });
 
-  // Shutdown the server gracefully
-  app.close(() => process.exit(1));
-
-  // If a graceful shutdown is not achieved after 1 second,
-  // shut down the process completely
-  setTimeout(() => process.abort(), 1000).unref();
-  process.exit(1);
+  // Force exit jika dalam 1 detik server tidak mau tutup
+  setTimeout(() => {
+    process.abort();
+  }, 1000).unref();
 });

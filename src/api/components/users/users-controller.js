@@ -35,20 +35,16 @@ async function createUser(request, response, next) {
       confirm_password: confirmPassword,
     } = request.body;
 
-    // Email is required and cannot be empty
     if (!email) {
       throw errorResponder(errorTypes.VALIDATION_ERROR, 'Email is required');
     }
 
-    // Full name is required and cannot be empty
     if (!fullName) {
       throw errorResponder(
         errorTypes.VALIDATION_ERROR,
         'Full name is required'
       );
     }
-
-    // Email must be unique
     if (await usersService.emailExists(email)) {
       throw errorResponder(
         errorTypes.EMAIL_ALREADY_TAKEN,
@@ -56,7 +52,13 @@ async function createUser(request, response, next) {
       );
     }
 
-    // The password is at least 8 characters long
+    if (!password) {
+      throw errorResponder(
+        errorTypes.VALIDATION_ERROR,
+        'Password is required'
+      );
+    }
+
     if (password.length < 8) {
       throw errorResponder(
         errorTypes.VALIDATION_ERROR,
@@ -64,7 +66,6 @@ async function createUser(request, response, next) {
       );
     }
 
-    // The password and confirm password must match
     if (password !== confirmPassword) {
       throw errorResponder(
         errorTypes.VALIDATION_ERROR,
@@ -72,10 +73,8 @@ async function createUser(request, response, next) {
       );
     }
 
-    // Hash the password before saving it to the database
     const hashedPassword = await hashPassword(password);
 
-    // Create the user
     const success = await usersService.createUser(
       email,
       hashedPassword,
@@ -99,18 +98,15 @@ async function updateUser(request, response, next) {
   try {
     const { email, full_name: fullName } = request.body;
 
-    // User must exist
     const user = await usersService.getUser(request.params.id);
     if (!user) {
       throw errorResponder(errorTypes.UNPROCESSABLE_ENTITY, 'User not found');
     }
 
-    // Email is required and cannot be empty
     if (!email) {
       throw errorResponder(errorTypes.VALIDATION_ERROR, 'Email is required');
     }
 
-    // Full name is required and cannot be empty
     if (!fullName) {
       throw errorResponder(
         errorTypes.VALIDATION_ERROR,
@@ -118,7 +114,6 @@ async function updateUser(request, response, next) {
       );
     }
 
-    // Email must be unique, if it is changed
     if (email !== user.email && (await usersService.emailExists(email))) {
       throw errorResponder(
         errorTypes.EMAIL_ALREADY_TAKEN,
@@ -132,10 +127,10 @@ async function updateUser(request, response, next) {
       fullName
     );
 
-    if (!success) {
+    if (success.matchedCount === 0 || success.modifiedCount === 0) {
       throw errorResponder(
         errorTypes.UNPROCESSABLE_ENTITY,
-        'Failed to update user'
+        'Failed to update user or no changes made'
       );
     }
 
@@ -146,31 +141,6 @@ async function updateUser(request, response, next) {
 }
 
 async function changePassword(request, response, next) {
-  // TODO: Implement this function
-  // const id = request.params.id;
-  // const {
-  //   old_password: oldPassword,
-  //   new_password: newPassword,
-  //   confirm_new_password: confirmNewPassword,
-  // } = request.body;
-  //
-  // Make sure that:
-  // - the user exists by checking the user ID
-  // - the old password is correct
-  // - the new password is at least 8 characters long
-  // - the new password is different from the old password
-  // - the new password and confirm new password match
-  //
-  // Note that the password is hashed in the database, so you need to
-  // compare the hashed password with the old password. Use the passwordMatched
-  // function from src/utils/password.js to compare the old password with the
-  // hashed password.
-  //
-  // If any of the conditions above is not met, return an error response
-  // with the appropriate status code and message.
-  //
-  // If all conditions are met, update the user's password and return
-  // a success response.
   return next(errorResponder(errorTypes.NOT_IMPLEMENTED));
 }
 
@@ -178,7 +148,7 @@ async function deleteUser(request, response, next) {
   try {
     const success = await usersService.deleteUser(request.params.id);
 
-    if (!success) {
+    if (success.deletedCount === 0) {
       throw errorResponder(
         errorTypes.UNPROCESSABLE_ENTITY,
         'Failed to delete user'
